@@ -5,7 +5,7 @@ import { Db } from 'mongodb';
 
 type OnMessage<T> = (message: T) => void
 
-export type CommonMessageHandler = (message: any) => any;
+export type CommonMessageHandler = (message: any, suppressLogs: boolean) => any;
 
 export interface MongoPubSubChannelOptions {
   size: number;
@@ -18,10 +18,11 @@ export interface PubSubMongoDbOptions {
   channelOptions?: MongoPubSubChannelOptions;
   connectionListener?: (event: string, data: any) => void;
   commonMessageHandler?: CommonMessageHandler;
+  suppressLogs?: boolean;
 }
 
-const defaultCommonMessageHandler: CommonMessageHandler = (message: any) => {
-  console.log(`MongodbPubSub.defaultCommonMessageHandler()`, message);
+const defaultCommonMessageHandler: CommonMessageHandler = (message: any, suppressLogs: boolean) => {
+  if (!suppressLogs) console.log(`MongodbPubSub.defaultCommonMessageHandler()`, message);
   return message;
 };
 
@@ -29,6 +30,7 @@ export class MongodbPubSub implements PubSubEngine {
   private channelName: string;
   private channel: MubSub;
   private commonMessageHandler: CommonMessageHandler;
+  private suppressLogs: boolean;
 
   private readonly subscriptionMap: { [subId: number]: [string, any] };
   private readonly subsRefsMap: Map<string, Set<number>>;
@@ -40,13 +42,15 @@ export class MongodbPubSub implements PubSubEngine {
       channelName,
       channelOptions,
       connectionListener,
-      commonMessageHandler
+      commonMessageHandler,
+      suppressLogs = true,
     } = options;
     this.subscriptionMap = {};
     this.subsRefsMap = new Map<string, Set<number>>();
     this.currentSubscriptionId = 0;
     this.channelName = channelName;
     this.commonMessageHandler = commonMessageHandler || defaultCommonMessageHandler;
+    this.suppressLogs = suppressLogs;
 
     // this.client = mongopubsub(connectionDb);
     // this.channel = this.client.channel(this.channelName, channelOptions);
@@ -62,7 +66,7 @@ export class MongodbPubSub implements PubSubEngine {
   }
 
   public async publish<T>(trigger: string, payload: T): Promise<void> {
-    console.log(`MongodbPubSub publish()`, { trigger, payload });
+    if (!this.suppressLogs) console.log(`MongodbPubSub publish()`, { trigger, payload });
     await this.channel.publish({ event: trigger, message: payload });
   }
 
@@ -71,19 +75,19 @@ export class MongodbPubSub implements PubSubEngine {
     onMessage: OnMessage<T>,
     options: unknown = {}
   ): Promise<number> {
-    console.log(`MongodbPubSub subscribe()`, { trigger });
+    if (!this.suppressLogs) console.log(`MongodbPubSub subscribe()`, { trigger });
     const triggerName: string = trigger;
     const id = this.currentSubscriptionId++;
     const callback = (message) => {
-      console.log(`MongodbPubSub subscription callback[${id}]`, message);
+      if (!this.suppressLogs) console.log(`MongodbPubSub subscription callback[${id}]`, message);
       onMessage(
         message instanceof Error
           ? message
-          : this.commonMessageHandler(message)
+          : this.commonMessageHandler(message, this.suppressLogs)
       );
     };
     const subscription = this.channel.subscribe({ event: triggerName, callback });
-    console.log(`subscription[${id}]`, `trigger[${triggerName}]`);
+    if (!this.suppressLogs) console.log(`subscription[${id}]`, `trigger[${triggerName}]`);
 
     this.subscriptionMap[id] = [triggerName, subscription];
 
@@ -97,8 +101,8 @@ export class MongodbPubSub implements PubSubEngine {
   }
 
   public unsubscribe(subId: number): void {
-    console.log(`MongodbPubSub.unsubscribe()`, `subId[${subId}]`);
-    console.log(`MongodbPubSub subscriptionMap`, this.subscriptionMap);
+    if (!this.suppressLogs) console.log(`MongodbPubSub.unsubscribe()`, `subId[${subId}]`);
+    if (!this.suppressLogs) console.log(`MongodbPubSub subscriptionMap`, this.subscriptionMap);
     const [triggerName = null, subscription] = this.subscriptionMap[subId] || [];
     const refs = this.subsRefsMap.get(triggerName);
 
