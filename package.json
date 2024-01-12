@@ -1,5 +1,8 @@
 {
-  "name": "graphql-mongodb-subscriptions",
+  "name": "@rivallapp/graphql-mongodb-subscriptions",
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
+  },
   "version": "1.1.0",
   "description": "A graphql-subscriptions PubSub Engine using MongoDB",
   "main": "dist/index.js",
