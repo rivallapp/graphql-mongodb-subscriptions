@@ -43,14 +43,14 @@ export class MongodbPubSub implements PubSubEngine {
       channelOptions,
       connectionListener,
       commonMessageHandler,
-      suppressLogs,
+      suppressLogs = true,
     } = options;
     this.subscriptionMap = {};
     this.subsRefsMap = new Map<string, Set<number>>();
     this.currentSubscriptionId = 0;
     this.channelName = channelName;
     this.commonMessageHandler = commonMessageHandler || defaultCommonMessageHandler;
-    this.suppressLogs = true;
+    this.suppressLogs = suppressLogs;
 
     // this.client = mongopubsub(connectionDb);
     // this.channel = this.client.channel(this.channelName, channelOptions);
